@@ -189,6 +189,11 @@ This option is only available in conjunction with "\-L, \-\-dump",
 Match entries whose labels include those specified as arguments.
 Use multiple \-l options to specify multiple labels that need to be set.
 .TP
+.BI "--labelmap " "PATH"
+Specify the path to a connlabel.conf file to load instead of the default one.
+This option is only available in conjunction with "\-L, \-\-dump", "\-E,
+\-\-event", "\-U \-\-update" or "\-D \-\-delete".
+.TP
 .BI "--label-add " "LABEL"
 Specify the conntrack label to add to the selected conntracks.
 This option is only available in conjunction with "\-I, \-\-create",
