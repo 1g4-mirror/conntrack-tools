@@ -122,6 +122,12 @@ struct ct_cmd {
 	struct ct_tmpl	tmpl;
 };
 
+struct ct_label {
+	struct list_head list;
+	char *name;
+	bool is_modify;
+};
+
 static int alloc_tmpl_objects(struct ct_tmpl *tmpl)
 {
 	tmpl->ct = nfct_new();
@@ -2963,6 +2969,32 @@ static int print_stats(const struct ct_cmd *cmd)
 	return 0;
 }
 
+static void parse_and_merge_labels(struct list_head *label_list, struct ct_tmpl *tmpl)
+{
+	struct ct_label *label, *next;
+	struct nfct_bitmask *bitmask;
+	unsigned int max;
+
+	list_for_each_entry_safe(label, next, label_list, list) {
+		max = parse_label_get_max(label->name);
+		bitmask = nfct_bitmask_new(max);
+		if (!bitmask)
+			exit_error(OTHER_PROBLEM, "out of memory");
+
+		parse_label(bitmask, label->name);
+
+		/* join "-l foo -l bar" into single bitmask object */
+		if (label->is_modify)
+			merge_bitmasks(&tmpl->label_modify, bitmask);
+		else
+			merge_bitmasks(&tmpl->label, bitmask);
+
+		list_del(&label->list);
+		free(label->name);
+		free(label);
+	}
+}
+
 static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 {
 	unsigned int type = 0, event_mask = 0, l4flags = 0, status = 0;
@@ -2973,6 +3005,7 @@ static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 	struct ct_tmpl *tmpl;
 	int res = 0, partial;
 	union ct_address ad;
+	LIST_HEAD(labels);
 	uint32_t value;
 	int c, cmd;
 
@@ -3088,8 +3121,6 @@ static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 		case 'o':
 			options |= CT_OPT_OUTPUT;
 			parse_parameter(optarg, &output_mask, PARSE_OUTPUT);
-			if (output_mask & _O_CL)
-				labelmap_init();
 			if ((output_mask & _O_SAVE) &&
 			    (output_mask & (_O_EXT |_O_TMS |_O_ID | _O_KTMS | _O_CL | _O_XML)))
 				exit_error(OTHER_PROBLEM,
@@ -3162,8 +3193,6 @@ static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 		case '>':
 			options |= opt2type[c];
 
-			labelmap_init();
-
 			if ((options & (CT_OPT_DEL_LABEL|CT_OPT_ADD_LABEL)) ==
 			    (CT_OPT_DEL_LABEL|CT_OPT_ADD_LABEL))
 				exit_error(OTHER_PROBLEM, "cannot use --label-add and "
@@ -3176,22 +3205,13 @@ static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 				optarg = tmp;
 			}
 
-			char *optarg2 = strdup(optarg);
-			unsigned int max = parse_label_get_max(optarg);
-			struct nfct_bitmask * b = nfct_bitmask_new(max);
-			if (!b)
+			struct ct_label *l = calloc(1, sizeof(*l));
+			if (!l)
 				exit_error(OTHER_PROBLEM, "out of memory");
 
-			parse_label(b, optarg2);
-
-			/* join "-l foo -l bar" into single bitmask object */
-			if (c == 'l') {
-				merge_bitmasks(&tmpl->label, b);
-			} else {
-				merge_bitmasks(&tmpl->label_modify, b);
-			}
-
-			free(optarg2);
+			l->name = strdup(optarg);
+			l->is_modify = c == '<' || c == '>';
+			list_add_tail(&l->list, &labels);
 			break;
 		case 'a':
 			fprintf(stderr, "WARNING: ignoring -%c, "
@@ -3246,6 +3266,12 @@ static void do_parse(struct ct_cmd *ct_cmd, int argc, char *argv[])
 		}
 	}
 
+	/* any of these options (might) use labels */
+	if ((options & (CT_OPT_LABEL | CT_OPT_ADD_LABEL | CT_OPT_DEL_LABEL)) ||
+	    ((options & CT_OPT_OUTPUT) && (output_mask & _O_CL))) {
+		labelmap_init();
+		parse_and_merge_labels(&labels, tmpl);
+	}
 
 	/* we cannot check this combination with generic_opt_check. */
 	if (options & CT_OPT_ANY_NAT &&
