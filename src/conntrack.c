@@ -331,7 +331,7 @@ static struct option original_opts[] = {
 	{"nat-range", 1, 0, 'a'},	/* deprecated */
 	{"mark", 1, 0, 'm'},
 	{"secmark", 1, 0, 'c'},
-	{"id", 2, 0, 'i'},		/* deprecated */
+	{"id", 1, 0, 'i'},		/* deprecated */
 	{"family", 1, 0, 'f'},
 	{"src-nat", 2, 0, 'n'},
 	{"dst-nat", 2, 0, 'g'},
