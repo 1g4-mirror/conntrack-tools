@@ -49,23 +49,24 @@ struct mcast_sock *mcast_server_create(struct mcast_conf *conf)
 	switch(conf->ipproto) {
 	case AF_INET:
 		mreq.ipv4.imr_multiaddr.s_addr = conf->in.inet_addr.s_addr;
-		mreq.ipv4.imr_interface.s_addr =conf->ifa.interface_addr.s_addr;
+		mreq.ipv4.imr_interface.s_addr = conf->ifa.interface_addr.s_addr;
 
 	        m->addr.ipv4.sin_family = AF_INET;
 	        m->addr.ipv4.sin_port = htons(conf->port);
-	        m->addr.ipv4.sin_addr.s_addr = htonl(INADDR_ANY);
+	        m->addr.ipv4.sin_addr.s_addr = conf->in.inet_addr.s_addr;
 
-		m->sockaddr_len = sizeof(struct sockaddr_in); 
+		m->sockaddr_len = sizeof(struct sockaddr_in);
 		break;
 
 	case AF_INET6:
 		memcpy(&mreq.ipv6.ipv6mr_multiaddr, &conf->in.inet_addr6,
-		       sizeof(uint32_t) * 4);
+		       sizeof(struct in6_addr));
 		mreq.ipv6.ipv6mr_interface = conf->ifa.interface_index6;
 
 		m->addr.ipv6.sin6_family = AF_INET6;
 		m->addr.ipv6.sin6_port = htons(conf->port);
-		m->addr.ipv6.sin6_addr = in6addr_any;
+		memcpy(&m->addr.ipv6.sin6_addr, &conf->in.inet_addr6,
+		       sizeof(struct in6_addr));
 
 		m->sockaddr_len = sizeof(struct sockaddr_in6);
 		break;
