@@ -135,7 +135,7 @@ void mcast_server_destroy(struct mcast_sock *m)
 	free(m);
 }
 
-static int 
+static int
 __mcast_client_create_ipv4(struct mcast_sock *m, struct mcast_conf *conf)
 {
 	int no = 0;
@@ -143,25 +143,21 @@ __mcast_client_create_ipv4(struct mcast_sock *m, struct mcast_conf *conf)
 	m->addr.ipv4.sin_family = AF_INET;
 	m->addr.ipv4.sin_port = htons(conf->port);
 	m->addr.ipv4.sin_addr = conf->in.inet_addr;
-	m->sockaddr_len = sizeof(struct sockaddr_in); 
+	m->sockaddr_len = sizeof(struct sockaddr_in);
 
 	if (setsockopt(m->fd, IPPROTO_IP, IP_MULTICAST_LOOP, &no,
-		       sizeof(int)) < 0) {
-		close(m->fd);
+		       sizeof(int)) < 0)
 		return -1;
-	}
 
 	if (setsockopt(m->fd, IPPROTO_IP, IP_MULTICAST_IF,
 		       &conf->ifa.interface_addr,
-		       sizeof(struct in_addr)) == -1) {
-		close(m->fd);
+		       sizeof(struct in_addr)) == -1)
 		return -1;
-	}
 
 	return 0;
 }
 
-static int 
+static int
 __mcast_client_create_ipv6(struct mcast_sock *m, struct mcast_conf *conf)
 {
 	int no = 0;
@@ -171,20 +167,16 @@ __mcast_client_create_ipv6(struct mcast_sock *m, struct mcast_conf *conf)
 	memcpy(&m->addr.ipv6.sin6_addr,
 	       &conf->in.inet_addr6,
 	       sizeof(struct in6_addr));
-	m->sockaddr_len = sizeof(struct sockaddr_in6); 
+	m->sockaddr_len = sizeof(struct sockaddr_in6);
 
 	if (setsockopt(m->fd, IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &no,
-		       sizeof(int)) < 0) {
-		close(m->fd);
+		       sizeof(int)) < 0)
 		return -1;
-	}
 
 	if (setsockopt(m->fd, IPPROTO_IPV6, IPV6_MULTICAST_IF,
 		       &conf->ifa.interface_index6,
-		       sizeof(unsigned int)) == -1) {
-		close(m->fd);
+		       sizeof(unsigned int)) == -1)
 		return -1;
-	}
 
 	return 0;
 }
