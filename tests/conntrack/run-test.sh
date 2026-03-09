@@ -6,7 +6,7 @@ then
 	exit 1
 fi
 
-gcc test-conntrack.c -o test
+make test
 #
 # XXX: module auto-load not support by nfnetlink_cttimeout yet :-(
 #
