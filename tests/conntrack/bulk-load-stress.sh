@@ -3,7 +3,6 @@
 DEFAULT_CT="../../src/conntrack"
 DEFAULT_SPORT_COUNT=0xffff
 DEFAULT_DPORT_COUNT=0x2
-DEFAULT_TMP_FILE="./ct_data.txt"
 DEFAULT_CT_ZONE=123
 DEFAULT_GEN_ONLY=0
 DEFAULT_CLEANUP_INDIVIDUAL=0
@@ -11,10 +10,15 @@ DEFAULT_CLEANUP_INDIVIDUAL=0
 CT=$DEFAULT_CT
 SPORT_COUNT=$DEFAULT_SPORT_COUNT
 DPORT_COUNT=$DEFAULT_DPORT_COUNT
-TMP_FILE=$DEFAULT_TMP_FILE
+TMP_FILE="$(mktemp)"
 CT_ZONE=$DEFAULT_CT_ZONE
 GEN_ONLY=$DEFAULT_GEN_ONLY
 CLEANUP_INDIVIDUAL=$DEFAULT_CLEANUP_INDIVIDUAL
+
+cleanup() {
+	rm -f "$TMP_FILE"
+}
+trap cleanup EXIT
 
 print_help()
 {
@@ -39,7 +43,7 @@ print_help()
 	echo "                         Default is ${DEFAULT_CT_ZONE}."
 	echo ""
 	echo "-f <tmp_file_name>    -  tmp file to be used to generate the ct data to."
-	echo "                         Default is ${DEFAULT_TMP_FILE}."
+	echo "                         Default is ${TMP_FILE}."
 	echo ""
 	echo "-g                    -  Generate tmp file and exit."
 	echo ""
@@ -54,12 +58,6 @@ function ct_data_gen()
 		done
 	done
 }
-
-if [ $UID -ne 0 ]
-then
-        echo "Run this test as root"
-        exit 1
-fi
 
 while [ $# -gt 0 ]
 do
@@ -140,11 +138,21 @@ NUM_ENTRIES=$(cat ${TMP_FILE} | wc -l)
 echo "File ${TMP_FILE} is generated, number of entries: ${NUM_ENTRIES}."
 
 if [ "$GEN_ONLY" -eq "1" ]; then
+	# Retain tmpfile in this mode
+	TMP_FILE=""
 	exit 0
+fi
+
+if [ $UID -ne 0 ]
+then
+        echo "Run this test as root"
+        exit 1
 fi
 
 echo "Loading ${NUM_ENTRIES} entries from ${TMP_FILE} .."
 time -p ${CT} -R $TMP_FILE
+lret=$?
+ret=$lret
 
 if [ "$CLEANUP_INDIVIDUAL" -eq "1" ]; then
 	sed -i -e "s/-I/-D/g" -e "s/-t 50//g" $TMP_FILE
@@ -155,9 +163,15 @@ if [ "$CLEANUP_INDIVIDUAL" -eq "1" ]; then
 
 	echo "Cleaning ${NUM_ENTRIES} entries from ${TMP_FILE} .."
 	time -p ${CT} -R $TMP_FILE
+	lret=$?
+	[ $ret -eq 0 ] && ret=$lret
 fi
 
 
 echo "Cleaning up zone ${CT_ZONE}.."
 time -p ${CT} -D -w $CT_ZONE > /dev/null
+lret=$?
+[ $ret -eq 0 ] && ret=$lret
 rm $TMP_FILE
+
+exit $ret
