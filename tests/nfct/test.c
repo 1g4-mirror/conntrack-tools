@@ -97,4 +97,8 @@ int main(int argc, char *argv[])
 	closedir(d);
 
 	fprintf(stdout, "OK: %d BAD: %d\n", ok, bad);
+	if (bad)
+		return 1;
+
+	return ok > 0 ? 0 : 1;
 }
