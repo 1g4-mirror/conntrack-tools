@@ -78,6 +78,7 @@
         NetlinkBufferSizeMaxGrowth 8388608
       }
       EOF
+    - ip link set lo up
     - $CONNTRACKD -C /tmp/conntrackd_notrack_hash_defaults -d
     - $CONNTRACKD -C /tmp/conntrackd_notrack_hash_defaults -s | grep -q "cache"
     - $CONNTRACKD -C /tmp/conntrackd_notrack_hash_defaults -k

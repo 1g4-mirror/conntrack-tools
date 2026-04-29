@@ -185,6 +185,10 @@ def stage_report():
     logging.info("--- failed tests: {}".format(ctx.counter_test_failed))
     logging.info("--- scenario failure: {}".format(ctx.counter_scenario_failed))
     logging.info("--- total tests: {}".format(total))
+    if ctx.counter_test_failed > 0:
+        exit(1)
+    if ctx.counter_test_ok == 0:
+        exit(1)
 
 
 def parse_args():
