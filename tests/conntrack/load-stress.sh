@@ -34,7 +34,7 @@ fi
 
 echo "Creating conntrack entries, please wait..."
 ct_data_gen
-ip netns exec ct-ns-test $conntrack -U -p tcp -m 1
+ip netns exec ct-ns-test $conntrack -U -p tcp -m 1 > /dev/null
 if [ $? -ne 0 ]
 then
 	echo "[FAILED] cannot update conntrack entries"
