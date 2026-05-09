@@ -14,11 +14,26 @@ TMP_FILE="$(mktemp)"
 CT_ZONE=$DEFAULT_CT_ZONE
 GEN_ONLY=$DEFAULT_GEN_ONLY
 CLEANUP_INDIVIDUAL=$DEFAULT_CLEANUP_INDIVIDUAL
+ret=0
+
+ct_max=0
+read ct_max < /proc/sys/net/netfilter/nf_conntrack_max
 
 cleanup() {
 	rm -f "$TMP_FILE"
 }
 trap cleanup EXIT
+
+assert() {
+	local r="$1"
+
+	if [ $r -ne 0 ]; then
+		[ "$ret" -eq 0 ] && ret="$r"
+		echo "FAIL: bulk-load-stress.sh: $@"
+	else
+		echo "PASS: bulk-load-stress.sh: $@"
+	fi
+}
 
 print_help()
 {
@@ -52,9 +67,18 @@ print_help()
 
 function ct_data_gen()
 {
+	local cnt=1
+
 	for (( d = 1; d <= $DPORT_COUNT; d++ )) do
 		for (( s = 1; s <= $SPORT_COUNT; s++ )) do
 			echo "-I -w $CT_ZONE -s 1.1.1.1 -d 2.2.2.2 -p tcp --sport ${s} --dport ${d} --state LISTEN -u SEEN_REPLY -t 50"
+
+			cnt=$((cnt+1))
+			[ $ct_max -eq 0 ] && continue
+			if [ $cnt -ge $ct_max ]; then
+				echo "WARN: Generated only $cnt entries ct_max ($ct_max) reached" 1>&2
+				return
+			fi
 		done
 	done
 }
@@ -135,7 +159,7 @@ ct_data_gen > $TMP_FILE
 
 NUM_ENTRIES=$(cat ${TMP_FILE} | wc -l)
 
-echo "File ${TMP_FILE} is generated, number of entries: ${NUM_ENTRIES}."
+echo "File ${TMP_FILE} is generated, number of entries: ${NUM_ENTRIES}. ct_max is $ct_max."
 
 if [ "$GEN_ONLY" -eq "1" ]; then
 	# Retain tmpfile in this mode
@@ -151,8 +175,9 @@ fi
 
 echo "Loading ${NUM_ENTRIES} entries from ${TMP_FILE} .."
 time -p ${CT} -R $TMP_FILE
-lret=$?
-ret=$lret
+assert $? "$CT -R $TMP_FILE"
+$CT -C
+assert $? "$CT -C"
 
 if [ "$CLEANUP_INDIVIDUAL" -eq "1" ]; then
 	sed -i -e "s/-I/-D/g" -e "s/-t 50//g" $TMP_FILE
@@ -163,15 +188,13 @@ if [ "$CLEANUP_INDIVIDUAL" -eq "1" ]; then
 
 	echo "Cleaning ${NUM_ENTRIES} entries from ${TMP_FILE} .."
 	time -p ${CT} -R $TMP_FILE
-	lret=$?
-	[ $ret -eq 0 ] && ret=$lret
+	assert $? "$CT -R $TMP_FILE - cleaning"
+else
+	echo "Cleaning up zone ${CT_ZONE}.."
+	time -p ${CT} -D -w $CT_ZONE > /dev/null
+	assert $? "$CT -D -w $CT_ZONE"
+	conntrack -C
+	assert $? "$CT -C"
 fi
-
-
-echo "Cleaning up zone ${CT_ZONE}.."
-time -p ${CT} -D -w $CT_ZONE > /dev/null
-lret=$?
-[ $ret -eq 0 ] && ret=$lret
-rm $TMP_FILE
 
 exit $ret
