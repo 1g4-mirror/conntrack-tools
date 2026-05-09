@@ -3,14 +3,15 @@
 # simple testing for cttimeout infrastructure using one single computer
 #
 
-if [ "$1" != "run" ] ;then
-	exec unshare -n ./$0 "run"
-fi
-
 die() {
 	echo "$@"
 	exit 1
 }
+
+if [ "$1" != "run" ] ;then
+	hping3 -h > /dev/null || die "hping3 is missing"
+	exec unshare -n ./$0 "run"
+fi
 
 warn() {
 	echo "WARN: $@"
