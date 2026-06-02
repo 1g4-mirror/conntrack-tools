@@ -195,10 +195,8 @@ retry:
 		if (errno == EEXIST && retry == 1) {
 			ret = nl_destroy_expect(tmp->h, exp);
 			if (ret == 0 || (ret == -1 && errno == ENOENT)) {
-				if (retry) {
-					retry = 0;
-					goto retry;
-				}
+				retry = 0;
+				goto retry;
 			}
 			dlog(LOG_ERR, "commit-destroy: %s", strerror(errno));
 			dlog_exp(STATE(log), exp, NFCT_O_PLAIN);

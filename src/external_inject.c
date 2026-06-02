@@ -70,10 +70,8 @@ retry:
 		if (errno == EEXIST && retry == 1) {
 			ret = nl_destroy_conntrack(inject, ct);
 			if (ret == 0 || (ret == -1 && errno == ENOENT)) {
-				if (retry) {
-					retry = 0;
-					goto retry;
-				}
+				retry = 0;
+				goto retry;
 			}
 			external_inject_stat.add_fail++;
 			dlog(LOG_WARNING,
@@ -200,10 +198,8 @@ retry:
 		if (errno == EEXIST && retry == 1) {
 			ret = nl_destroy_expect(inject, exp);
 			if (ret == 0 || (ret == -1 && errno == ENOENT)) {
-				if (retry) {
-					retry = 0;
-					goto retry;
-				}
+				retry = 0;
+				goto retry;
 			}
 			exp_external_inject_stat.add_fail++;
 			dlog(LOG_WARNING,
